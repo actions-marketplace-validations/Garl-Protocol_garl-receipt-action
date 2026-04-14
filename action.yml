@@ -1,0 +1,59 @@
+name: 'GARL Receipt'
+description: 'Sign every AI-authored commit in your pull request with a cryptographically verifiable GARL Receipt.'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  garl-api-key:
+    description: 'GARL API key for the repository agent. Store as a repo secret (GARL_API_KEY).'
+    required: true
+  garl-agent-id:
+    description: 'GARL agent UUID for this repo. Generate one via garl.ai and store as GARL_AGENT_ID.'
+    required: true
+  min-confidence:
+    description: 'Minimum AI-authorship confidence (0.0–1.0) to sign a commit. Lower = more permissive. Commits below threshold are still summarized.'
+    required: false
+    default: '0.5'
+  comment:
+    description: 'Post a receipt summary as a PR comment (true/false).'
+    required: false
+    default: 'true'
+  check:
+    description: 'Post an informational (neutral) check run on the PR (true/false).'
+    required: false
+    default: 'true'
+  api-url:
+    description: 'GARL API base URL.'
+    required: false
+    default: 'https://api.garl.ai/api/v1'
+  site-url:
+    description: 'GARL frontend base URL used for receipt links.'
+    required: false
+    default: 'https://garl.ai'
+
+outputs:
+  receipts-json:
+    description: 'JSON array of submitted receipts: [{commit, tool, confidence, receipt_url}].'
+    value: ${{ steps.run.outputs.receipts-json }}
+  ai-commit-count:
+    description: 'Number of commits detected as AI-authored above the confidence threshold.'
+    value: ${{ steps.run.outputs.ai-commit-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run GARL Receipt
+      id: run
+      shell: bash
+      env:
+        GARL_API_KEY: ${{ inputs.garl-api-key }}
+        GARL_AGENT_ID: ${{ inputs.garl-agent-id }}
+        GARL_API_URL: ${{ inputs.api-url }}
+        GARL_SITE_URL: ${{ inputs.site-url }}
+        GARL_MIN_CONF: ${{ inputs.min-confidence }}
+        GARL_POST_COMMENT: ${{ inputs.comment }}
+        GARL_POST_CHECK: ${{ inputs.check }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        python3 "${GITHUB_ACTION_PATH}/scripts/run_receipt.py"
