@@ -207,8 +207,41 @@ def http_json(url: str, method: str = "GET", headers: dict[str, str] | None = No
         return 0, {"_error": str(e)}
 
 
+def commit_ci_conclusion(sha: str) -> tuple[bool, str]:
+    """Read the commit's REAL CI result from GitHub so the receipt carries an
+    independently-verifiable attestation instead of a hardcoded 'success'.
+
+    Returns (commit_exists, conclusion) where conclusion is one of:
+    pending | failure | success | neutral | none | unknown. GARL's own
+    check-run is excluded so we read the repo's CI, not ourselves.
+    """
+    if not (GITHUB_TOKEN and GITHUB_REPOSITORY and sha):
+        return True, "unknown"
+    st, _ = http_json(f"{GH_API}/repos/{GITHUB_REPOSITORY}/commits/{sha}", headers=gh_headers())
+    if st == 404:
+        return False, "none"
+    if st != 200:
+        return True, "unknown"
+    st, data = http_json(f"{GH_API}/repos/{GITHUB_REPOSITORY}/commits/{sha}/check-runs", headers=gh_headers())
+    if st != 200 or not isinstance(data, dict):
+        return True, "unknown"
+    runs = [c for c in (data.get("check_runs") or []) if "garl" not in (c.get("name") or "").lower()]
+    if not runs:
+        return True, "none"
+    statuses = {c.get("status") for c in runs}
+    conclusions = {c.get("conclusion") for c in runs}
+    if statuses & {"queued", "in_progress"} or None in conclusions:
+        return True, "pending"
+    if conclusions & {"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale"}:
+        return True, "failure"
+    if "success" in conclusions:
+        return True, "success"
+    return True, "neutral"
+
+
 def submit_trace(commit: dict[str, Any], tool: str, confidence: float, model: str | None) -> dict[str, Any] | None:
     task = f"AI-authored commit {commit['sha'][:7]}: {commit['subject'][:160]}"
+    exists, ci = commit_ci_conclusion(commit["sha"])
     metadata = {
         "github_repo": GITHUB_REPOSITORY,
         "commit_sha": commit["sha"],
@@ -218,14 +251,28 @@ def submit_trace(commit: dict[str, Any], tool: str, confidence: float, model: st
     }
     if model:
         metadata["model"] = model
+    # A commit whose CI actually failed must NOT be recorded as a success.
+    status = "failure" if ci == "failure" else "success"
+    # An independently re-verifiable attestation: anyone can call GitHub with
+    # repo + commit_sha and confirm this conclusion. With ENABLE_GITHUB_
+    # ATTESTATION_CHECK on, the GARL backend also re-verifies and stamps it.
+    attestation: dict[str, Any] = {
+        "type": "github-check-run",
+        "repo": GITHUB_REPOSITORY,
+        "commit_sha": commit["sha"],
+        "conclusion": ci,
+    }
+    if GITHUB_REPOSITORY:
+        attestation["url"] = f"https://github.com/{GITHUB_REPOSITORY}/commit/{commit['sha']}"
     body = {
         "agent_id": AGENT_ID,
         "task_description": task,
-        "status": "success",
+        "status": status,
         "duration_ms": max(commit["duration_ms"], 1),
         "category": "coding",
         "runtime_env": f"github-action-receipt/{tool.lower().replace(' ', '-')}",
         "metadata": metadata,
+        "attestations": [attestation],
     }
     status, data = http_json(
         f"{API_URL}/verify",

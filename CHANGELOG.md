@@ -1,5 +1,20 @@
 # Changelog — garl-receipt-action
 
+## 1.1.0 — 2026-06-10
+
+### Externally-corroborated receipts
+- Each receipt now carries the commit's **real CI result** instead of a
+  hardcoded `status: success`. For every AI-authored commit the action reads
+  the commit's actual GitHub check-runs (excluding GARL's own neutral run) and
+  attaches a `github-check-run` attestation
+  `{type, repo, commit_sha, conclusion, url}`.
+- `repo` + `commit_sha` + `conclusion` are **independently re-verifiable** by
+  anyone against the GitHub API — the answer to "a receipt just signs
+  self-reported data". A commit whose CI failed is recorded as `failure`.
+- The GARL backend re-verifies and stamps `witnessed` when
+  `ENABLE_GITHUB_ATTESTATION_CHECK` is configured.
+
+
 ## 1.0.0 — 2026-04-14
 
 First standalone release, extracted from the

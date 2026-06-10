@@ -112,6 +112,24 @@ Commits below `min-confidence` are listed as *no AI marker* but never
 fail the workflow. The check run is always **neutral** —
 informational, non-blocking.
 
+## Verifiable CI attestation
+
+Each receipt now carries the commit's **real CI result**, not a hardcoded
+status. For every AI-authored commit the action reads the commit's actual
+GitHub check-runs (excluding GARL's own) and attaches an attestation:
+
+```json
+{ "type": "github-check-run", "repo": "owner/name",
+  "commit_sha": "…", "conclusion": "success|failure|pending|neutral|none",
+  "url": "https://github.com/owner/name/commit/…" }
+```
+
+This is the answer to "a receipt just signs self-reported data": `repo` +
+`commit_sha` + `conclusion` point at a **public fact anyone can re-check**
+against GitHub. The trace `status` reflects the real CI (a commit whose CI
+failed is recorded as `failure`, never a hardcoded success). The GARL backend
+can additionally re-verify and stamp `witnessed` when configured.
+
 ## Privacy & data
 
 Only metadata is sent to GARL:
@@ -119,6 +137,7 @@ Only metadata is sent to GARL:
 - commit SHA, subject, files-changed count
 - detected AI tool + confidence + model name (if any)
 - commit duration (git committer date − author date)
+- the commit's CI conclusion (read from GitHub; the diff/code is never sent)
 
 **Source code, diffs, and file contents are never uploaded.** Receipts
 only surface task description, status, duration, category, and
