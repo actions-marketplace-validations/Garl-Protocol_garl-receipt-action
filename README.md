@@ -8,7 +8,7 @@ open-source [GARL Protocol](https://garl.ai) ledger, and posts a
 sticky PR comment + neutral GitHub check with a shareable receipt URL
 for each commit.
 
-Five lines of YAML. Two repo secrets. No diffs or source are ever
+Five lines of YAML. One repo secret. No diffs or source are ever
 uploaded — only metadata.
 
 ## What reviewers see on a PR
@@ -44,11 +44,13 @@ And an informational (neutral) GitHub check named `GARL Receipt`.
      -d '{"name":"gh-<owner>-<repo>","framework":"github-action"}'
    ```
 
-   Save `agent_id` and `api_key` from the response.
+   Save the `api_key` from the response. (The `agent_id` is optional —
+   the action resolves it from the key, so one secret is enough.)
 
-2. Add two repository secrets:
-   - `GARL_AGENT_ID` — the returned agent UUID
+2. Add one repository secret:
    - `GARL_API_KEY` — the returned API key
+
+   Optionally also add `GARL_AGENT_ID` to skip the per-run key→agent lookup.
 
 3. Add the workflow (`.github/workflows/garl-receipt.yml`):
 
@@ -68,10 +70,10 @@ And an informational (neutral) GitHub check named `GARL Receipt`.
          - uses: actions/checkout@v4
            with:
              fetch-depth: 0  # needed so git log can walk base..head
-         - uses: Garl-Protocol/garl-receipt-action@v1.0.0
+         - uses: Garl-Protocol/garl-receipt-action@v1.2.0
            with:
              garl-api-key: ${{ secrets.GARL_API_KEY }}
-             garl-agent-id: ${{ secrets.GARL_AGENT_ID }}
+             # garl-agent-id: optional — resolved from the API key when omitted
    ```
 
 Open a PR whose commits carry an AI co-author trailer — the action
@@ -82,7 +84,7 @@ signs them.
 | Name | Required | Default | Purpose |
 |---|---|---|---|
 | `garl-api-key` | ✅ | — | Repo agent API key (secret) |
-| `garl-agent-id` | ✅ | — | Repo agent UUID (secret) |
+| `garl-agent-id` | | resolved from key | Repo agent UUID. Optional — resolved from `garl-api-key` when omitted. |
 | `min-confidence` | | `0.5` | Lowest AI-authorship confidence (0.0–1.0) that produces a receipt. Commits below this are summarized but not signed. |
 | `comment` | | `true` | Post/update a sticky PR comment with the receipt summary. |
 | `check` | | `true` | Post an informational (neutral) GitHub check run on the PR. |

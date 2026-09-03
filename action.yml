@@ -9,8 +9,9 @@ inputs:
     description: 'GARL API key for the repository agent. Store as a repo secret (GARL_API_KEY).'
     required: true
   garl-agent-id:
-    description: 'GARL agent UUID for this repo. Generate one via garl.ai and store as GARL_AGENT_ID.'
-    required: true
+    description: 'GARL agent UUID. Optional — when omitted it is resolved from garl-api-key (GET /agents/me), so a repo needs only one secret. Set it explicitly to skip the lookup.'
+    required: false
+    default: ''
   min-confidence:
     description: 'Minimum AI-authorship confidence (0.0–1.0) to sign a commit. Lower = more permissive. Commits below threshold are still summarized.'
     required: false

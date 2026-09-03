@@ -351,11 +351,26 @@ def post_check(head_sha: str, ai_count: int, total: int, summary_md: str) -> Non
 # Orchestration
 # ──────────────────────────────────────────────────────────────────
 
+def resolve_agent_id() -> str:
+    """Resolve the agent UUID from the API key (GET /agents/me) so a repo needs
+    only ONE secret. Skipped when GARL_AGENT_ID is supplied explicitly."""
+    st, data = http_json(f"{API_URL}/agents/me", headers={"x-api-key": API_KEY})
+    if st == 200 and isinstance(data, dict) and data.get("id"):
+        return str(data["id"])
+    if st in (401, 403):
+        fail("GARL_API_KEY is invalid or matches no agent. Check the GARL_API_KEY repo secret.")
+    fail(f"Could not resolve the agent from GARL_API_KEY (HTTP {st}). "
+         "Set GARL_AGENT_ID explicitly to skip this lookup.")
+    return ""  # unreachable — fail() exits
+
+
 def main() -> None:
+    global AGENT_ID
     if not API_KEY:
         fail("GARL_API_KEY not set. Add it as a repository secret.")
     if not AGENT_ID:
-        fail("GARL_AGENT_ID not set. Generate a GARL agent UUID and add it as a repository secret.")
+        AGENT_ID = resolve_agent_id()
+        log(f"Resolved agent {AGENT_ID} from the API key (no GARL_AGENT_ID needed).")
 
     event = load_event()
     commits = list_commits(event)

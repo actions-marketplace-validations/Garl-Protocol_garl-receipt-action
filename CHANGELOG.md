@@ -1,5 +1,15 @@
 # Changelog — garl-receipt-action
 
+## 1.2.0 — 2026-06-30
+
+### One-secret setup
+- `garl-agent-id` is now **optional**. When omitted, the action resolves the
+  agent UUID from `garl-api-key` via `GET /agents/me`, so a repository needs
+  only **one secret** (`GARL_API_KEY`). Supplying `GARL_AGENT_ID` still works
+  and skips the lookup — fully backward-compatible.
+- Docs: workflow example pinned to `@v1.2.0`; setup now lists a single secret.
+
+
 ## 1.1.0 — 2026-06-10
 
 ### Externally-corroborated receipts
