@@ -1,5 +1,8 @@
 # GARL Receipt — GitHub Action
 
+> [!IMPORTANT]
+> **Archived on 24 September 2026.** GARL is no longer maintained. The GARL API this action calls (api.garl.ai) no longer accepts receipts, so new runs will fail. Existing anchored receipts remain verifiable at [garl.ai/anchors](https://garl.ai/anchors). Main repository: [Garl-Protocol/garl](https://github.com/Garl-Protocol/garl).
+
 > **Cryptographic proof for every AI-generated commit.**
 
 Signs every AI-authored commit in a pull request (Claude Code, Cursor,
